@@ -4,11 +4,13 @@
 #include "storage.h"
 
 constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 16;
+constexpr uint32_t MEASUREMENT_BUFFER_FORMAT_VERSION = 2;
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 constexpr char BUFFER_NAMESPACE[] = "buffer";
 constexpr char QUEUED_COUNT_KEY[] = "count";
 constexpr char OLDEST_INDEX_KEY[] = "oldest";
 constexpr char NEXT_WRITE_INDEX_KEY[] = "next";
+constexpr char BUFFER_FORMAT_KEY[] = "format";
 
 struct MeasurementBufferState {
     uint32_t queuedCount;
@@ -23,6 +25,43 @@ static_assert(
 
 void makeMeasurementKey(uint32_t slotIndex, char* key, size_t keySize) {
     snprintf(key, keySize, "m%lu", slotIndex);
+}
+
+void clearBufferedMeasurements(Preferences& preferences) {
+    preferences.remove(QUEUED_COUNT_KEY);
+    preferences.remove(OLDEST_INDEX_KEY);
+    preferences.remove(NEXT_WRITE_INDEX_KEY);
+
+    for (uint32_t slotIndex = 0; slotIndex < MEASUREMENT_BUFFER_CAPACITY; ++slotIndex) {
+        char key[16];
+        makeMeasurementKey(slotIndex, key, sizeof(key));
+        preferences.remove(key);
+    }
+}
+
+void ensureMeasurementBufferFormat(Preferences& preferences) {
+    const uint32_t storedFormat =
+        preferences.isKey(BUFFER_FORMAT_KEY)
+            ? preferences.getUInt(BUFFER_FORMAT_KEY)
+            : 0;
+
+    if (storedFormat == MEASUREMENT_BUFFER_FORMAT_VERSION) {
+        return;
+    }
+
+    if (storedFormat == 0) {
+        Serial.println(
+            "Buffered measurement format upgrade detected. Clearing old test buffer because previous records use the old binary Measurement layout."
+        );
+    } else {
+        Serial.printf(
+            "Unsupported buffered measurement format %lu. Clearing buffered measurements.\n",
+            storedFormat
+        );
+    }
+
+    clearBufferedMeasurements(preferences);
+    preferences.putUInt(BUFFER_FORMAT_KEY, MEASUREMENT_BUFFER_FORMAT_VERSION);
 }
 
 MeasurementBufferState loadMeasurementBufferState(Preferences& preferences) {
@@ -60,6 +99,10 @@ bool loadBufferedMeasurement(
         return false;
     }
 
+    if (preferences.getBytesLength(key) != sizeof(measurement)) {
+        return false;
+    }
+
     return preferences.getBytes(key, &measurement, sizeof(measurement)) ==
         sizeof(measurement);
 }
@@ -84,6 +127,7 @@ uint32_t getNextSequence() {
 void storeMeasurement(const Measurement& measurement) {
     Preferences preferences;
     preferences.begin(BUFFER_NAMESPACE, false);
+    ensureMeasurementBufferFormat(preferences);
 
     MeasurementBufferState state = loadMeasurementBufferState(preferences);
     const bool isBufferFull = state.queuedCount >= MEASUREMENT_BUFFER_CAPACITY;
@@ -154,6 +198,7 @@ void storeMeasurement(const Measurement& measurement) {
 void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
     Preferences preferences;
     preferences.begin(BUFFER_NAMESPACE, false);
+    ensureMeasurementBufferFormat(preferences);
 
     MeasurementBufferState state = loadMeasurementBufferState(preferences);
     uint32_t removedCount = 0;
@@ -203,7 +248,8 @@ void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
 
 void printQueuedMeasurements() {
     Preferences preferences;
-    preferences.begin(BUFFER_NAMESPACE, true);
+    preferences.begin(BUFFER_NAMESPACE, false);
+    ensureMeasurementBufferFormat(preferences);
 
     MeasurementBufferState state = loadMeasurementBufferState(preferences);
 

@@ -4,6 +4,7 @@
 
 #include "measurement.h"
 #include "storage.h"
+#include "time_utils.h"
 
 Adafruit_BME280 bme;
 
@@ -22,11 +23,15 @@ bool initSensor() {
 }
 
 Measurement readMeasurement() {
+    const bool timestampValid = isSystemTimeValid();
+
     return {
         getNextSequence(),
         bme.readTemperature(),
         bme.readHumidity(),
-        bme.readPressure() / 100.0F
+        bme.readPressure() / 100.0F,
+        timestampValid ? getCurrentUnixTimestamp() : 0,
+        timestampValid
     };
 }
 
@@ -36,5 +41,12 @@ void printMeasurement(const Measurement& measurement) {
     Serial.printf("Temperature: %.2f C\n", measurement.temperatureC);
     Serial.printf("Humidity:    %.2f %%\n", measurement.humidityPercent);
     Serial.printf("Pressure:    %.2f hPa\n", measurement.pressureHpa);
+
+    if (measurement.timestampValid) {
+        Serial.printf("Timestamp:   %lu (UTC Unix)\n", measurement.unixTimestamp);
+    } else {
+        Serial.println("Timestamp:   invalid");
+    }
+
     Serial.println("===================");
 }

@@ -5,7 +5,16 @@
 
 constexpr uint32_t WIFI_TIMEOUT_MS = 10000;
 
+bool isWifiConnected() {
+    return WiFi.status() == WL_CONNECTED;
+}
+
 bool connectWifi() {
+    if (isWifiConnected()) {
+        Serial.println("Wi-Fi already connected.");
+        return true;
+    }
+
     Serial.printf("Connecting to Wi-Fi: %s\n", WIFI_SSID);
 
     WiFi.mode(WIFI_STA);
@@ -36,6 +45,12 @@ bool connectWifi() {
 }
 
 void disconnectWifi() {
+    if (!isWifiConnected()) {
+        WiFi.mode(WIFI_OFF);
+        Serial.println("Wi-Fi disconnected.");
+        return;
+    }
+
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 

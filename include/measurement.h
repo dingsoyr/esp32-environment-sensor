@@ -7,6 +7,8 @@ struct Measurement {
     float temperatureC;
     float humidityPercent;
     float pressureHpa;
+    uint32_t unixTimestamp;
+    bool timestampValid;
 };
 
 bool initSensor();
