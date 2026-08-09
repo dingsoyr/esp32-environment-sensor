@@ -1,5 +1,6 @@
 #include <WiFi.h>
 
+#include "logging.h"
 #include "wifi_utils.h"
 #include "secrets.h"
 
@@ -11,11 +12,11 @@ bool isWifiConnected() {
 
 bool connectWifi() {
     if (isWifiConnected()) {
-        Serial.println("Wi-Fi already connected.");
+        LOG_PRINTLN("Wi-Fi already connected.");
         return true;
     }
 
-    Serial.printf("Connecting to Wi-Fi: %s\n", WIFI_SSID);
+    LOG_PRINTF("Connecting to Wi-Fi: %s\n", WIFI_SSID);
 
     WiFi.mode(WIFI_STA);
 
@@ -25,7 +26,7 @@ bool connectWifi() {
 
     while (WiFi.status() != WL_CONNECTED) {
         if (millis() - start >= WIFI_TIMEOUT_MS) {
-            Serial.println("Wi-Fi connection timed out.");
+            LOG_PRINTLN("Wi-Fi connection timed out.");
             WiFi.disconnect(true);
             WiFi.mode(WIFI_OFF);
             return false;
@@ -36,10 +37,10 @@ bool connectWifi() {
 
     const unsigned long duration = millis() - start;
 
-    Serial.println("Wi-Fi connected.");
-    Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("RSSI: %d dBm\n", WiFi.RSSI());
-    Serial.printf("Connection time: %lu ms\n", duration);
+    LOG_PRINTLN("Wi-Fi connected.");
+    LOG_PRINTF("IP address: %s\n", WiFi.localIP().toString().c_str());
+    LOG_PRINTF("RSSI: %d dBm\n", WiFi.RSSI());
+    LOG_PRINTF("Connection time: %lu ms\n", duration);
 
     return true;
 }
@@ -47,12 +48,12 @@ bool connectWifi() {
 void disconnectWifi() {
     if (!isWifiConnected()) {
         WiFi.mode(WIFI_OFF);
-        Serial.println("Wi-Fi disconnected.");
+        LOG_PRINTLN("Wi-Fi disconnected.");
         return;
     }
 
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
-    Serial.println("Wi-Fi disconnected.");
+    LOG_PRINTLN("Wi-Fi disconnected.");
 }

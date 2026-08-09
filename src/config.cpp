@@ -1,6 +1,7 @@
 #include <Preferences.h>
 
 #include "config.h"
+#include "logging.h"
 
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 
@@ -34,12 +35,12 @@ DeviceConfig loadConfig() {
 }
 
 void printConfig(const DeviceConfig& config) {
-    Serial.println("=== Configuration ===");
-    Serial.printf("Device name: %s\n", config.deviceName.c_str());
-    Serial.printf("Config version: %lu\n", config.configVersion);
-    Serial.printf(
+    LOG_PRINTLN("=== Configuration ===");
+    LOG_PRINTF("Device name: %s\n", config.deviceName.c_str());
+    LOG_PRINTF("Config version: %lu\n", config.configVersion);
+    LOG_PRINTF(
         "Measurement interval: %lu seconds\n",
         config.measurementIntervalSeconds
     );
-    Serial.println("=====================");
+    LOG_PRINTLN("=====================");
 }

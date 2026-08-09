@@ -3,6 +3,7 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include "logging.h"
 #include "time_utils.h"
 
 // Treat times earlier than 2024-01-01 UTC as invalid so default epoch-like
@@ -28,7 +29,7 @@ void setSystemTimeFromUnixTimestamp(uint32_t unixTimestamp) {
 }
 
 bool syncTimeWithNtp() {
-    Serial.println("Attempting NTP synchronization.");
+    LOG_PRINTLN("Attempting NTP synchronization.");
 
     configTime(0, 0, "pool.ntp.org", "time.nist.gov", "time.google.com");
 
@@ -36,14 +37,14 @@ bool syncTimeWithNtp() {
 
     while (!isSystemTimeValid()) {
         if (millis() - start >= NTP_SYNC_TIMEOUT_MS) {
-            Serial.println("NTP synchronization timed out.");
+            LOG_PRINTLN("NTP synchronization timed out.");
             return false;
         }
 
         delay(100);
     }
 
-    Serial.printf(
+    LOG_PRINTF(
         "NTP synchronization succeeded. UTC Unix time: %lu\n",
         getCurrentUnixTimestamp()
     );

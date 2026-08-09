@@ -2,6 +2,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
+#include "logging.h"
 #include "measurement.h"
 #include "storage.h"
 #include "time_utils.h"
@@ -36,17 +37,17 @@ Measurement readMeasurement() {
 }
 
 void printMeasurement(const Measurement& measurement) {
-    Serial.println("=== Measurement ===");
-    Serial.printf("Sequence:    %lu\n", measurement.sequence);
-    Serial.printf("Temperature: %.2f C\n", measurement.temperatureC);
-    Serial.printf("Humidity:    %.2f %%\n", measurement.humidityPercent);
-    Serial.printf("Pressure:    %.2f hPa\n", measurement.pressureHpa);
+    LOG_PRINTLN("=== Measurement ===");
+    LOG_PRINTF("Sequence:    %lu\n", measurement.sequence);
+    LOG_PRINTF("Temperature: %.2f C\n", measurement.temperatureC);
+    LOG_PRINTF("Humidity:    %.2f %%\n", measurement.humidityPercent);
+    LOG_PRINTF("Pressure:    %.2f hPa\n", measurement.pressureHpa);
 
     if (measurement.timestampValid) {
-        Serial.printf("Timestamp:   %lu (UTC Unix)\n", measurement.unixTimestamp);
+        LOG_PRINTF("Timestamp:   %lu (UTC Unix)\n", measurement.unixTimestamp);
     } else {
-        Serial.println("Timestamp:   invalid");
+        LOG_PRINTLN("Timestamp:   invalid");
     }
 
-    Serial.println("===================");
+    LOG_PRINTLN("===================");
 }

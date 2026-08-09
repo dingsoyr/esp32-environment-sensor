@@ -1,6 +1,7 @@
 #include <Preferences.h>
 #include <type_traits>
 
+#include "logging.h"
 #include "storage.h"
 
 constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 100;
@@ -101,7 +102,7 @@ void ensureMeasurementBufferFormat(Preferences& preferences) {
             saveMeasurementBufferState(preferences, {0, 0, 0});
             preferences.remove("capacity");
 
-            Serial.println(
+            LOG_PRINTLN(
                 "Buffered measurement reset after removing capacity-migration metadata."
             );
         }
@@ -110,11 +111,11 @@ void ensureMeasurementBufferFormat(Preferences& preferences) {
     }
 
     if (storedFormat == 0) {
-        Serial.println(
+        LOG_PRINTLN(
             "Buffered measurement format upgrade detected. Clearing old test buffer because previous records use the old binary Measurement layout."
         );
     } else {
-        Serial.printf(
+        LOG_PRINTF(
             "Unsupported buffered measurement format %lu. Clearing buffered measurements.\n",
             storedFormat
         );
@@ -202,12 +203,12 @@ void storeMeasurement(const Measurement& measurement) {
             state.oldestIndex,
             discardedMeasurement
         )) {
-            Serial.printf(
+            LOG_PRINTF(
                 "Buffer full. Discarding oldest buffered measurement %lu.\n",
                 discardedMeasurement.sequence
             );
         } else {
-            Serial.printf(
+            LOG_PRINTF(
                 "Buffer full. Discarding oldest buffered measurement in slot %lu.\n",
                 state.oldestIndex
             );
@@ -224,7 +225,7 @@ void storeMeasurement(const Measurement& measurement) {
         preferences.putBytes(key, &measurement, sizeof(measurement));
 
     if (written != sizeof(measurement)) {
-        Serial.printf(
+        LOG_PRINTF(
             "ERROR: Failed to store measurement %lu.\n",
             measurement.sequence
         );
@@ -262,7 +263,7 @@ void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
             state.oldestIndex,
             oldestMeasurement
         )) {
-            Serial.printf(
+            LOG_PRINTF(
                 "ACK stopped. Missing buffered measurement in slot %lu.\n",
                 state.oldestIndex
             );
@@ -290,7 +291,7 @@ void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
     saveMeasurementBufferState(preferences, state);
     preferences.end();
 
-    Serial.printf(
+    LOG_PRINTF(
         "ACK up to %lu removed %lu buffered measurement(s).\n",
         acknowledgedSequence,
         removedCount
@@ -304,9 +305,9 @@ void printQueuedMeasurements() {
 
     MeasurementBufferState state = loadMeasurementBufferState(preferences);
 
-    Serial.println("=== Buffered Measurements ===");
-    Serial.printf("Queued count: %lu\n", state.queuedCount);
-    Serial.print("Sequences: ");
+    LOG_PRINTLN("=== Buffered Measurements ===");
+    LOG_PRINTF("Queued count: %lu\n", state.queuedCount);
+    LOG_PRINT("Sequences: ");
 
     bool printedAny = false;
 
@@ -324,19 +325,19 @@ void printQueuedMeasurements() {
         }
 
         if (printedAny) {
-            Serial.print(", ");
+            LOG_PRINT(", ");
         }
 
-        Serial.print(bufferedMeasurement.sequence);
+        LOG_PRINT(bufferedMeasurement.sequence);
         printedAny = true;
     }
 
     if (!printedAny) {
-        Serial.print("none");
+        LOG_PRINT("none");
     }
 
-    Serial.println();
-    Serial.println("=============================");
+    LOG_PRINTLN();
+    LOG_PRINTLN("=============================");
 
     preferences.end();
 }

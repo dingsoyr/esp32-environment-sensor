@@ -1,15 +1,16 @@
 #include <Arduino.h>
 #include <esp_sleep.h>
 
+#include "logging.h"
 #include "power.h"
 
 void goToSleep(uint32_t sleepDurationSeconds) {
-    Serial.printf(
+    LOG_PRINTF(
         "Going to deep sleep for %lu seconds...\n",
         sleepDurationSeconds
     );
 
-    Serial.flush();
+    LOG_FLUSH();
 
     esp_sleep_enable_timer_wakeup(
         static_cast<uint64_t>(sleepDurationSeconds) * 1000000ULL

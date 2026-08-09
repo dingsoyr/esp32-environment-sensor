@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "config.h"
 #include "device.h"
+#include "logging.h"
 #include "measurement.h"
 #include "power.h"
 #include "storage.h"
@@ -8,21 +9,21 @@
 #include "wifi_utils.h"
 
 void setup() {
-    Serial.begin(115200);
+    LOG_BEGIN(115200);
 
     const unsigned long awakeStart = millis();
 
-    Serial.println();
-    Serial.println("ESP32 environment sensor starting...");
+    LOG_PRINTLN();
+    LOG_PRINTLN("ESP32 environment sensor starting...");
 
     String deviceId = getDeviceId();
-    Serial.printf("Device ID: %s\n", deviceId.c_str());
+    LOG_PRINTF("Device ID: %s\n", deviceId.c_str());
 
     DeviceConfig config = loadConfig();
     printConfig(config);
 
     if (!initSensor()) {
-        Serial.println("ERROR: BME280 not found.");
+        LOG_PRINTLN("ERROR: BME280 not found.");
         goToSleep(config.measurementIntervalSeconds);
     }
 
@@ -31,7 +32,7 @@ void setup() {
     bool ntpSyncAttempted = false;
     bool ntpSyncSucceeded = false;
 
-    Serial.printf(
+    LOG_PRINTF(
         "Local time valid on wake: %s\n",
         localTimeValidOnWake ? "yes" : "no"
     );
@@ -43,19 +44,19 @@ void setup() {
             ntpSyncAttempted = true;
             ntpSyncSucceeded = syncTimeWithNtp();
         } else {
-            Serial.println(
+            LOG_PRINTLN(
                 "NTP synchronization skipped because Wi-Fi connection failed."
             );
         }
     }
 
-    Serial.printf(
+    LOG_PRINTF(
         "NTP synchronization attempted: %s\n",
         ntpSyncAttempted ? "yes" : "no"
     );
 
     if (ntpSyncAttempted) {
-        Serial.printf(
+        LOG_PRINTF(
             "NTP synchronization result: %s\n",
             ntpSyncSucceeded ? "succeeded" : "failed or timed out"
         );
@@ -69,14 +70,14 @@ void setup() {
     if (!wifiConnected) {
         wifiConnected = connectWifi();
     } else {
-        Serial.println("Reusing existing Wi-Fi connection for current wake cycle.");
+        LOG_PRINTLN("Reusing existing Wi-Fi connection for current wake cycle.");
     }
 
     if (wifiConnected) {
         disconnectWifi();
     }
 
-    Serial.printf("Total awake time: %lu ms\n", millis() - awakeStart);
+    LOG_PRINTF("Total awake time: %lu ms\n", millis() - awakeStart);
 
     goToSleep(config.measurementIntervalSeconds);
 }
