@@ -1,5 +1,4 @@
 #include <Preferences.h>
-#include <nvs.h>
 #include <type_traits>
 
 #include "storage.h"
@@ -29,7 +28,6 @@ bool loadBufferedMeasurement(
     uint32_t slotIndex,
     Measurement& measurement
 );
-void printTemporaryNvsUsageDiagnostics();
 
 static_assert(
     std::is_trivially_copyable<Measurement>::value,
@@ -341,8 +339,4 @@ void printQueuedMeasurements() {
     Serial.println("=============================");
 
     preferences.end();
-}
-
-void printNvsUsageDiagnostics() {
-    printTemporaryNvsUsageDiagnostics();
 }
