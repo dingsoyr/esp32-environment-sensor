@@ -19,6 +19,7 @@ struct DeviceConfig {
 };
 
 struct Measurement {
+    uint32_t sequence;
     float temperatureC;
     float humidityPercent;
     float pressureHpa;
@@ -75,8 +76,26 @@ void printConfig(const DeviceConfig& config) {
     Serial.println("=====================");
 }
 
+uint32_t getNextSequence() {
+    Preferences preferences;
+    preferences.begin("sensor", false);
+
+    uint32_t sequence =
+        preferences.isKey("sequence")
+            ? preferences.getUInt("sequence")
+            : 0;
+
+    sequence++;
+
+    preferences.putUInt("sequence", sequence);
+    preferences.end();
+
+    return sequence;
+}
+
 Measurement readMeasurement() {
     return {
+        getNextSequence(),
         bme.readTemperature(),
         bme.readHumidity(),
         bme.readPressure() / 100.0F
@@ -85,6 +104,7 @@ Measurement readMeasurement() {
 
 void printMeasurement(const Measurement& measurement) {
     Serial.println("=== Measurement ===");
+    Serial.printf("Sequence:    %lu\n", measurement.sequence);
     Serial.printf("Temperature: %.2f C\n", measurement.temperatureC);
     Serial.printf("Humidity:    %.2f %%\n", measurement.humidityPercent);
     Serial.printf("Pressure:    %.2f hPa\n", measurement.pressureHpa);
