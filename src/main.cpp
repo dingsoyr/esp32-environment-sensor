@@ -158,19 +158,6 @@ String getDeviceId() {
     return String(deviceId);
 }
 
-void saveTestConfig() {
-    Preferences preferences;
-    preferences.begin("sensor", false);
-
-    preferences.putString("name", "test-sensor");
-    preferences.putUInt("version", 2);
-    preferences.putUInt("interval", 45);
-
-    preferences.end();
-
-    Serial.println("Test configuration saved.");
-}
-
 void setup() {
     Serial.begin(115200);
 
@@ -181,8 +168,6 @@ void setup() {
 
     String deviceId = getDeviceId();
     Serial.printf("Device ID: %s\n", deviceId.c_str());
-
-    // saveTestConfig();
 
     DeviceConfig config = loadConfig();
     printConfig(config);
