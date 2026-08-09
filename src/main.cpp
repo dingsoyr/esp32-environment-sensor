@@ -138,6 +138,22 @@ void saveMeasurementBufferState(
     preferences.putUInt(NEXT_WRITE_INDEX_KEY, state.nextWriteIndex);
 }
 
+bool loadBufferedMeasurement(
+    Preferences& preferences,
+    uint32_t slotIndex,
+    Measurement& measurement
+) {
+    char key[16];
+    makeMeasurementKey(slotIndex, key, sizeof(key));
+
+    if (!preferences.isKey(key)) {
+        return false;
+    }
+
+    return preferences.getBytes(key, &measurement, sizeof(measurement)) ==
+        sizeof(measurement);
+}
+
 void storeMeasurement(const Measurement& measurement) {
     Preferences preferences;
     preferences.begin(BUFFER_NAMESPACE, false);
@@ -158,18 +174,12 @@ void storeMeasurement(const Measurement& measurement) {
     }
 
     if (isBufferFull) {
-        char discardedKey[16];
-        makeMeasurementKey(state.oldestIndex, discardedKey, sizeof(discardedKey));
-
         Measurement discardedMeasurement;
-        const size_t discardedBytes =
-            preferences.getBytes(
-                discardedKey,
-                &discardedMeasurement,
-                sizeof(discardedMeasurement)
-            );
-
-        if (discardedBytes == sizeof(discardedMeasurement)) {
+        if (loadBufferedMeasurement(
+            preferences,
+            state.oldestIndex,
+            discardedMeasurement
+        )) {
             Serial.printf(
                 "Buffer full. Discarding oldest buffered measurement %lu.\n",
                 discardedMeasurement.sequence
@@ -214,6 +224,56 @@ void storeMeasurement(const Measurement& measurement) {
     preferences.end();
 }
 
+void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
+    Preferences preferences;
+    preferences.begin(BUFFER_NAMESPACE, false);
+
+    MeasurementBufferState state = loadMeasurementBufferState(preferences);
+    uint32_t removedCount = 0;
+
+    while (state.queuedCount > 0) {
+        Measurement oldestMeasurement;
+
+        if (!loadBufferedMeasurement(
+            preferences,
+            state.oldestIndex,
+            oldestMeasurement
+        )) {
+            Serial.printf(
+                "ACK stopped. Missing buffered measurement in slot %lu.\n",
+                state.oldestIndex
+            );
+            break;
+        }
+
+        if (oldestMeasurement.sequence > acknowledgedSequence) {
+            break;
+        }
+
+        char key[16];
+        makeMeasurementKey(state.oldestIndex, key, sizeof(key));
+        preferences.remove(key);
+
+        state.oldestIndex =
+            (state.oldestIndex + 1) % MEASUREMENT_BUFFER_CAPACITY;
+        state.queuedCount--;
+        removedCount++;
+    }
+
+    if (state.queuedCount == 0) {
+        state.nextWriteIndex = state.oldestIndex;
+    }
+
+    saveMeasurementBufferState(preferences, state);
+    preferences.end();
+
+    Serial.printf(
+        "ACK up to %lu removed %lu buffered measurement(s).\n",
+        acknowledgedSequence,
+        removedCount
+    );
+}
+
 void printQueuedMeasurements() {
     Preferences preferences;
     preferences.begin(BUFFER_NAMESPACE, true);
@@ -230,18 +290,12 @@ void printQueuedMeasurements() {
         const uint32_t sequenceIndex =
             (state.oldestIndex + offset) % MEASUREMENT_BUFFER_CAPACITY;
 
-        char key[16];
-        makeMeasurementKey(sequenceIndex, key, sizeof(key));
-
-        if (!preferences.isKey(key)) {
-            continue;
-        }
-
         Measurement bufferedMeasurement;
-        const size_t bytesRead =
-            preferences.getBytes(key, &bufferedMeasurement, sizeof(bufferedMeasurement));
-
-        if (bytesRead != sizeof(bufferedMeasurement)) {
+        if (!loadBufferedMeasurement(
+            preferences,
+            sequenceIndex,
+            bufferedMeasurement
+        )) {
             continue;
         }
 
