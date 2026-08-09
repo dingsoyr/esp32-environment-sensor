@@ -65,9 +65,6 @@ DeviceConfig loadConfig() {
     Preferences preferences;
     preferences.begin(SENSOR_NAMESPACE, false);
 
-    // TEMP: force a 10 second persisted interval for ring-buffer testing.
-    preferences.putUInt("interval", 10);
-
     DeviceConfig config;
 
     config.deviceName =
