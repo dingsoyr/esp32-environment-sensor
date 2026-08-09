@@ -1,9 +1,10 @@
 #include <Preferences.h>
+#include <nvs.h>
 #include <type_traits>
 
 #include "storage.h"
 
-constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 16;
+constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 100;
 constexpr uint32_t MEASUREMENT_BUFFER_FORMAT_VERSION = 2;
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 constexpr char BUFFER_NAMESPACE[] = "buffer";
@@ -18,6 +19,18 @@ struct MeasurementBufferState {
     uint32_t nextWriteIndex;
 };
 
+MeasurementBufferState loadMeasurementBufferState(Preferences& preferences);
+void saveMeasurementBufferState(
+    Preferences& preferences,
+    const MeasurementBufferState& state
+);
+bool loadBufferedMeasurement(
+    Preferences& preferences,
+    uint32_t slotIndex,
+    Measurement& measurement
+);
+void printTemporaryNvsUsageDiagnostics();
+
 static_assert(
     std::is_trivially_copyable<Measurement>::value,
     "Measurement must remain trivially copyable for NVS storage."
@@ -27,16 +40,48 @@ void makeMeasurementKey(uint32_t slotIndex, char* key, size_t keySize) {
     snprintf(key, keySize, "m%lu", slotIndex);
 }
 
-void clearBufferedMeasurements(Preferences& preferences) {
+MeasurementBufferState sanitizeMeasurementBufferState(
+    const MeasurementBufferState& state,
+    uint32_t capacity
+) {
+    MeasurementBufferState sanitizedState = state;
+
+    if (capacity == 0) {
+        return {0, 0, 0};
+    }
+
+    if (sanitizedState.queuedCount > capacity) {
+        sanitizedState.queuedCount = capacity;
+    }
+
+    if (sanitizedState.oldestIndex >= capacity) {
+        sanitizedState.oldestIndex = 0;
+    }
+
+    if (sanitizedState.nextWriteIndex >= capacity) {
+        sanitizedState.nextWriteIndex = 0;
+    }
+
+    return sanitizedState;
+}
+
+void clearBufferedMeasurements(Preferences& preferences, uint32_t slotCount) {
     preferences.remove(QUEUED_COUNT_KEY);
     preferences.remove(OLDEST_INDEX_KEY);
     preferences.remove(NEXT_WRITE_INDEX_KEY);
 
-    for (uint32_t slotIndex = 0; slotIndex < MEASUREMENT_BUFFER_CAPACITY; ++slotIndex) {
+    for (uint32_t slotIndex = 0; slotIndex < slotCount; ++slotIndex) {
         char key[16];
         makeMeasurementKey(slotIndex, key, sizeof(key));
-        preferences.remove(key);
+
+        if (preferences.isKey(key)) {
+            preferences.remove(key);
+        }
     }
+}
+
+void clearBufferedMeasurements(Preferences& preferences) {
+    clearBufferedMeasurements(preferences, MEASUREMENT_BUFFER_CAPACITY);
 }
 
 void ensureMeasurementBufferFormat(Preferences& preferences) {
@@ -46,6 +91,23 @@ void ensureMeasurementBufferFormat(Preferences& preferences) {
             : 0;
 
     if (storedFormat == MEASUREMENT_BUFFER_FORMAT_VERSION) {
+        if (preferences.isKey("capacity")) {
+            const uint32_t storedSlotCount = preferences.getUInt("capacity");
+
+            clearBufferedMeasurements(
+                preferences,
+                storedSlotCount > MEASUREMENT_BUFFER_CAPACITY
+                    ? storedSlotCount
+                    : MEASUREMENT_BUFFER_CAPACITY
+            );
+            saveMeasurementBufferState(preferences, {0, 0, 0});
+            preferences.remove("capacity");
+
+            Serial.println(
+                "Buffered measurement reset after removing capacity-migration metadata."
+            );
+        }
+
         return;
     }
 
@@ -60,7 +122,7 @@ void ensureMeasurementBufferFormat(Preferences& preferences) {
         );
     }
 
-    clearBufferedMeasurements(preferences);
+    clearBufferedMeasurements(preferences, MEASUREMENT_BUFFER_CAPACITY);
     preferences.putUInt(BUFFER_FORMAT_KEY, MEASUREMENT_BUFFER_FORMAT_VERSION);
 }
 
@@ -129,20 +191,11 @@ void storeMeasurement(const Measurement& measurement) {
     preferences.begin(BUFFER_NAMESPACE, false);
     ensureMeasurementBufferFormat(preferences);
 
-    MeasurementBufferState state = loadMeasurementBufferState(preferences);
+    MeasurementBufferState state = sanitizeMeasurementBufferState(
+        loadMeasurementBufferState(preferences),
+        MEASUREMENT_BUFFER_CAPACITY
+    );
     const bool isBufferFull = state.queuedCount >= MEASUREMENT_BUFFER_CAPACITY;
-
-    if (state.queuedCount > MEASUREMENT_BUFFER_CAPACITY) {
-        state.queuedCount = MEASUREMENT_BUFFER_CAPACITY;
-    }
-
-    if (state.oldestIndex >= MEASUREMENT_BUFFER_CAPACITY) {
-        state.oldestIndex = 0;
-    }
-
-    if (state.nextWriteIndex >= MEASUREMENT_BUFFER_CAPACITY) {
-        state.nextWriteIndex = 0;
-    }
 
     if (isBufferFull) {
         Measurement discardedMeasurement;
@@ -288,4 +341,8 @@ void printQueuedMeasurements() {
     Serial.println("=============================");
 
     preferences.end();
+}
+
+void printNvsUsageDiagnostics() {
+    printTemporaryNvsUsageDiagnostics();
 }

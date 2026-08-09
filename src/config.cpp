@@ -8,6 +8,9 @@ DeviceConfig loadConfig() {
     Preferences preferences;
     preferences.begin(SENSOR_NAMESPACE, false);
 
+    // Change interval for testing purposes
+    preferences.putUInt("interval", 10);
+
     DeviceConfig config;
 
     config.deviceName =
