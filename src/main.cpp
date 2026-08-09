@@ -1,3 +1,4 @@
+#include <Preferences.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
@@ -9,8 +10,13 @@
 
 Adafruit_BME280 bme;
 
-constexpr uint64_t SLEEP_DURATION_SECONDS = 30;
 constexpr uint32_t WIFI_TIMEOUT_MS = 10000;
+
+struct DeviceConfig {
+    String deviceName;
+    uint32_t configVersion;
+    uint32_t measurementIntervalSeconds;
+};
 
 struct Measurement {
     float temperatureC;
@@ -30,6 +36,43 @@ bool initSensor() {
     }
 
     return false;
+}
+
+DeviceConfig loadConfig() {
+    Preferences preferences;
+    preferences.begin("sensor", false);
+
+    DeviceConfig config;
+
+    config.deviceName =
+        preferences.isKey("name")
+            ? preferences.getString("name")
+            : "unnamed";
+
+    config.configVersion =
+        preferences.isKey("version")
+            ? preferences.getUInt("version")
+            : 1;
+
+    config.measurementIntervalSeconds =
+        preferences.isKey("interval")
+            ? preferences.getUInt("interval")
+            : 30;
+
+    preferences.end();
+
+    return config;
+}
+
+void printConfig(const DeviceConfig& config) {
+    Serial.println("=== Configuration ===");
+    Serial.printf("Device name: %s\n", config.deviceName.c_str());
+    Serial.printf("Config version: %lu\n", config.configVersion);
+    Serial.printf(
+        "Measurement interval: %lu seconds\n",
+        config.measurementIntervalSeconds
+    );
+    Serial.println("=====================");
 }
 
 Measurement readMeasurement() {
@@ -85,19 +128,34 @@ void disconnectWifi() {
     Serial.println("Wi-Fi disconnected.");
 }
 
-void goToSleep() {
+void goToSleep(uint32_t sleepDurationSeconds) {
     Serial.printf(
-        "Going to deep sleep for %llu seconds...\n",
-        SLEEP_DURATION_SECONDS
+        "Going to deep sleep for %lu seconds...\n",
+        sleepDurationSeconds
     );
 
     Serial.flush();
 
     esp_sleep_enable_timer_wakeup(
-        SLEEP_DURATION_SECONDS * 1000000ULL
+        static_cast<uint64_t>(sleepDurationSeconds) * 1000000ULL
     );
 
     esp_deep_sleep_start();
+}
+
+String getDeviceId() {
+    uint64_t chipId = ESP.getEfuseMac();
+
+    char deviceId[20];
+
+    snprintf(
+        deviceId,
+        sizeof(deviceId),
+        "sensor-%06llx",
+        chipId & 0xFFFFFF
+    );
+
+    return String(deviceId);
 }
 
 void setup() {
@@ -108,9 +166,15 @@ void setup() {
     Serial.println();
     Serial.println("ESP32 environment sensor starting...");
 
+    String deviceId = getDeviceId();
+    Serial.printf("Device ID: %s\n", deviceId.c_str());
+
+    DeviceConfig config = loadConfig();
+    printConfig(config);
+
     if (!initSensor()) {
         Serial.println("ERROR: BME280 not found.");
-        goToSleep();
+        goToSleep(config.measurementIntervalSeconds);
     }
 
     Measurement measurement = readMeasurement();
@@ -122,7 +186,7 @@ void setup() {
 
     Serial.printf("Total awake time: %lu ms\n", millis() - awakeStart);
 
-    goToSleep();
+    goToSleep(config.measurementIntervalSeconds);
 }
 
 void loop() {
