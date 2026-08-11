@@ -6,9 +6,6 @@
 #include "logging.h"
 #include "time_utils.h"
 
-// Treat times earlier than 2024-01-01 UTC as invalid so default epoch-like
-// values after reset or power loss do not look like real measurement times.
-constexpr uint32_t MIN_VALID_UNIX_TIMESTAMP = 1704067200UL;
 constexpr uint32_t NTP_SYNC_TIMEOUT_MS = 5000;
 
 uint32_t getCurrentUnixTimestamp() {
@@ -16,7 +13,11 @@ uint32_t getCurrentUnixTimestamp() {
 }
 
 bool isSystemTimeValid() {
-    return getCurrentUnixTimestamp() >= MIN_VALID_UNIX_TIMESTAMP;
+    return isUnixTimestampValid(getCurrentUnixTimestamp());
+}
+
+bool isUnixTimestampValid(uint32_t unixTimestamp) {
+    return unixTimestamp >= MIN_VALID_UNIX_TIMESTAMP;
 }
 
 void setSystemTimeFromUnixTimestamp(uint32_t unixTimestamp) {

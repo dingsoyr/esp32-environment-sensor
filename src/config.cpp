@@ -5,13 +5,7 @@
 
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 
-DeviceConfig loadConfig() {
-    Preferences preferences;
-    preferences.begin(SENSOR_NAMESPACE, false);
-
-    // Change interval for testing purposes
-    // preferences.putUInt("interval", 10);
-
+DeviceConfig readConfigFromPreferences(Preferences& preferences) {
     DeviceConfig config;
 
     config.deviceName =
@@ -29,9 +23,68 @@ DeviceConfig loadConfig() {
             ? preferences.getUInt("interval")
             : 30;
 
+    return config;
+}
+
+bool writeConfigToPreferences(
+    Preferences& preferences,
+    const DeviceConfig& config
+) {
+    const size_t nameWritten =
+        preferences.putString("name", config.deviceName);
+    const size_t versionWritten =
+        preferences.putUInt("version", config.configVersion);
+    const size_t intervalWritten = preferences.putUInt(
+        "interval",
+        config.measurementIntervalSeconds
+    );
+
+    return nameWritten == config.deviceName.length() &&
+        versionWritten == sizeof(config.configVersion) &&
+        intervalWritten == sizeof(config.measurementIntervalSeconds);
+}
+
+DeviceConfig loadConfig() {
+    Preferences preferences;
+    preferences.begin(SENSOR_NAMESPACE, false);
+
+    // Change interval for testing purposes
+    // preferences.putUInt("interval", 10);
+
+    DeviceConfig config = readConfigFromPreferences(preferences);
+
     preferences.end();
 
     return config;
+}
+
+bool saveConfig(const DeviceConfig& config) {
+    Preferences preferences;
+
+    if (!preferences.begin(SENSOR_NAMESPACE, false)) {
+        LOG_PRINTLN("ERROR: Failed to open configuration storage.");
+        return false;
+    }
+
+    const DeviceConfig previousConfig = readConfigFromPreferences(preferences);
+    const bool success = writeConfigToPreferences(preferences, config);
+
+    if (!success) {
+        const bool rollbackSucceeded =
+            writeConfigToPreferences(preferences, previousConfig);
+
+        if (!rollbackSucceeded) {
+            LOG_PRINTLN(
+                "ERROR: Configuration persistence failed and rollback did not complete."
+            );
+        } else {
+            LOG_PRINTLN("ERROR: Configuration persistence failed.");
+        }
+    }
+
+    preferences.end();
+
+    return success;
 }
 
 void printConfig(const DeviceConfig& config) {

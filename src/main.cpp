@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "measurement.h"
 #include "power.h"
+#include "server_api_client.h"
 #include "storage.h"
 #include "time_utils.h"
 #include "wifi_utils.h"
@@ -74,6 +75,10 @@ void setup() {
     }
 
     if (wifiConnected) {
+        const MeasurementUploadOutcome uploadOutcome =
+            uploadBufferedMeasurements(deviceId, config);
+
+        config = uploadOutcome.effectiveConfig;
         disconnectWifi();
     }
 

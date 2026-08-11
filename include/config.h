@@ -9,4 +9,5 @@ struct DeviceConfig {
 };
 
 DeviceConfig loadConfig();
+bool saveConfig(const DeviceConfig& config);
 void printConfig(const DeviceConfig& config);

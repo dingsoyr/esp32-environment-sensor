@@ -4,7 +4,6 @@
 #include "logging.h"
 #include "storage.h"
 
-constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 100;
 constexpr uint32_t MEASUREMENT_BUFFER_FORMAT_VERSION = 2;
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 constexpr char BUFFER_NAMESPACE[] = "buffer";
@@ -245,6 +244,56 @@ void storeMeasurement(const Measurement& measurement) {
 
     saveMeasurementBufferState(preferences, state);
     preferences.end();
+}
+
+bool loadQueuedMeasurements(
+    Measurement* measurements,
+    uint32_t capacity,
+    uint32_t* loadedCount
+) {
+    if (loadedCount == nullptr) {
+        return false;
+    }
+
+    *loadedCount = 0;
+
+    if (capacity > 0 && measurements == nullptr) {
+        return false;
+    }
+
+    Preferences preferences;
+    preferences.begin(BUFFER_NAMESPACE, false);
+    ensureMeasurementBufferFormat(preferences);
+
+    const MeasurementBufferState state = sanitizeMeasurementBufferState(
+        loadMeasurementBufferState(preferences),
+        MEASUREMENT_BUFFER_CAPACITY
+    );
+    const uint32_t measurementCount =
+        state.queuedCount < capacity ? state.queuedCount : capacity;
+
+    for (uint32_t offset = 0; offset < measurementCount; ++offset) {
+        const uint32_t sequenceIndex =
+            (state.oldestIndex + offset) % MEASUREMENT_BUFFER_CAPACITY;
+
+        if (!loadBufferedMeasurement(
+            preferences,
+            sequenceIndex,
+            measurements[offset]
+        )) {
+            LOG_PRINTF(
+                "ERROR: Failed to load buffered measurement in slot %lu.\n",
+                sequenceIndex
+            );
+            preferences.end();
+            return false;
+        }
+    }
+
+    preferences.end();
+
+    *loadedCount = measurementCount;
+    return true;
 }
 
 void acknowledgeMeasurementsUpTo(uint32_t acknowledgedSequence) {
