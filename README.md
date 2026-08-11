@@ -110,6 +110,74 @@ Verify that VS Code shows `WSL: Ubuntu` as the remote environment.
 PlatformIO IDE and the Microsoft C/C++ extension should be installed in
 the WSL environment, not only in the local Windows VS Code environment.
 
+## First-time setup after cloning
+
+Clone the repository into the WSL filesystem and create the two local
+configuration files before building or uploading:
+
+``` bash
+git clone <repository-url>
+cd esp32-environment-sensor
+
+cp include/secrets.example.h include/secrets.h
+cp include/local_config.example.h include/local_config.h
+```
+
+Both local files must be edited for the current environment before the
+firmware is built or uploaded.
+
+## Local configuration files
+
+### Local Wi-Fi secrets
+
+`include/secrets.h` is a local file and is intentionally ignored by Git.
+The committed template is `include/secrets.example.h`.
+
+After cloning, create the local file from the example:
+
+``` bash
+cp include/secrets.example.h include/secrets.h
+```
+
+Edit `include/secrets.h` with the local Wi-Fi SSID and password. Never
+commit `include/secrets.h`.
+
+### Local server configuration
+
+`include/local_config.h` contains non-secret, environment-specific local
+settings and is intentionally ignored by Git. The committed template is
+`include/local_config.example.h`.
+
+After cloning, create the local file from the example:
+
+``` bash
+cp include/local_config.example.h include/local_config.h
+```
+
+Edit `ENVIRONMENT_SENSOR_SERVER_MEASUREMENTS_URL` so it points to the
+current development or deployment server.
+
+Example development value:
+
+``` cpp
+constexpr char ENVIRONMENT_SENSOR_SERVER_MEASUREMENTS_URL[] =
+    "http://192.168.x.x:8000/api/v1/measurements";
+```
+
+The IP above is only a placeholder. A developer-specific LAN IP should
+not be committed. When the Raspberry Pi server is deployed, change this
+value to the Pi address or hostname. This URL is not a secret, but it is
+local environment configuration and should remain in
+`include/local_config.h` rather than tracked source files.
+
+## PlatformIO environments
+
+The project currently defines three PlatformIO environments:
+
+-   `debug` enables debug logging.
+-   `release` compiles normal debug logging out.
+-   `native` runs host-side protocol tests.
+
 ## Build, upload and serial monitor
 
 These operations can be run using the PlatformIO controls in VS Code or
@@ -118,19 +186,25 @@ from the WSL terminal.
 ### Build
 
 ``` bash
-pio run
+pio run -e debug
 ```
 
 ### Upload
 
 ``` bash
-pio run --target upload
+pio run -e debug -t upload
 ```
 
 ### Serial monitor
 
 ``` bash
 pio device monitor
+```
+
+### Native tests
+
+``` bash
+pio test -e native
 ```
 
 ## Notes

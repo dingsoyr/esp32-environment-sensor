@@ -2,6 +2,7 @@
 #include "config.h"
 #include "device.h"
 #include "logging.h"
+#include "local_config.h"
 #include "measurement.h"
 #include "power.h"
 #include "server_api_client.h"
@@ -76,7 +77,11 @@ void setup() {
 
     if (wifiConnected) {
         const MeasurementUploadOutcome uploadOutcome =
-            uploadBufferedMeasurements(deviceId, config);
+            uploadBufferedMeasurements(
+                deviceId,
+                config,
+                ENVIRONMENT_SENSOR_SERVER_MEASUREMENTS_URL
+            );
 
         config = uploadOutcome.effectiveConfig;
         disconnectWifi();

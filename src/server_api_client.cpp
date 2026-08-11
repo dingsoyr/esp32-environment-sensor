@@ -83,7 +83,8 @@ void logHttpFailure(int httpStatus) {
 
 MeasurementUploadOutcome uploadBufferedMeasurements(
     const String& deviceId,
-    const DeviceConfig& currentConfig
+    const DeviceConfig& currentConfig,
+    const char* measurementsUrl
 ) {
     MeasurementUploadOutcome outcome = {
         false,
@@ -121,7 +122,7 @@ MeasurementUploadOutcome uploadBufferedMeasurements(
     WiFiClient wifiClient;
     HTTPClient http;
 
-    if (!http.begin(wifiClient, ENVIRONMENT_SENSOR_SERVER_MEASUREMENTS_URL)) {
+    if (!http.begin(wifiClient, measurementsUrl)) {
         LOG_PRINTLN("Measurement upload failed: could not initialize HTTP client.");
         return outcome;
     }
