@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 
 #include "config.h"
+#include "firmware_version.h"
 #include "logging.h"
 #include "server_api_client.h"
 #include "server_api_protocol.h"
@@ -12,7 +13,6 @@
 
 namespace {
 
-constexpr char FIRMWARE_VERSION[] = "0.1.0-dev";
 constexpr uint32_t HTTP_TIMEOUT_MS = 5000;
 
 String buildMeasurementUploadRequest(
