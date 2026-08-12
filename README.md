@@ -2,6 +2,26 @@
 
 Firmware for the ESP32-based environment sensor.
 
+## Current firmware runtime
+
+On each wake cycle the firmware:
+
+- loads persisted device configuration
+- checks whether the current UTC time is already valid
+- connects to Wi-Fi for NTP only when time synchronization is needed
+- reads and stores a measurement before network upload
+- connects to Wi-Fi, or reuses the existing connection from NTP sync
+- uploads buffered measurements to the server
+- validates the API v1 response
+- applies `server_time` when a valid value is returned
+- removes only measurements acknowledged by `acknowledged_through`
+- persists a newer server-supplied configuration when present
+- disconnects Wi-Fi
+- enters deep sleep using the effective measurement interval
+
+This README stays focused on setup and day-to-day development. See the source
+for implementation details.
+
 ## Development environment
 
 Development is done in Ubuntu on WSL2 using Visual Studio Code and
@@ -97,6 +117,13 @@ PlatformIO can also verify the device:
 pio device list
 ```
 
+If `pio` is not on `PATH` in the current shell, use the explicit PlatformIO
+virtual environment path instead, for example:
+
+``` bash
+$HOME/.platformio/penv/bin/pio device list
+```
+
 ## Opening the project
 
 From the project directory in WSL:
@@ -174,19 +201,44 @@ local environment configuration and should remain in
 
 The project currently defines three PlatformIO environments:
 
--   `debug` enables debug logging.
--   `release` compiles normal debug logging out.
--   `native` runs host-side protocol tests.
+-   `debug`: ESP32 development build with debug logging enabled.
+-   `release`: ESP32 build with normal debug logging disabled.
+-   `native`: host-side tests of the API response/protocol parser only.
+
+The `native` environment does not exercise full firmware behavior, Wi-Fi,
+storage, hardware access, or end-to-end server integration.
 
 ## Build, upload and serial monitor
 
 These operations can be run using the PlatformIO controls in VS Code or
 from the WSL terminal.
 
+The short `pio ...` commands below assume the PlatformIO CLI is already
+available on `PATH`. If it is not, use the explicit PlatformIO venv path shown
+in the alternate examples.
+
 ### Build
 
 ``` bash
 pio run -e debug
+```
+
+Alternate form:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e debug
+```
+
+### Release build
+
+``` bash
+pio run -e release
+```
+
+Alternate form:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e release
 ```
 
 ### Upload
@@ -195,10 +247,22 @@ pio run -e debug
 pio run -e debug -t upload
 ```
 
+Alternate form:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e debug -t upload
+```
+
 ### Serial monitor
 
 ``` bash
 pio device monitor
+```
+
+Alternate form:
+
+``` bash
+$HOME/.platformio/penv/bin/pio device monitor
 ```
 
 ### Native tests
@@ -206,6 +270,14 @@ pio device monitor
 ``` bash
 pio test -e native
 ```
+
+Alternate form:
+
+``` bash
+$HOME/.platformio/penv/bin/pio test -e native
+```
+
+These native tests currently cover the API response parser only.
 
 ## Notes
 

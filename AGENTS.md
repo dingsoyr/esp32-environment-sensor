@@ -17,12 +17,27 @@ Current firmware responsibilities:
 - Read temperature, humidity, and pressure from BME280
 - Assign a persistent sequence number to every measurement
 - Store measurements in a bounded persistent NVS ring buffer
+- Upload buffered measurements over HTTP
+- Validate API v1 upload responses
+- Apply server-provided time and configuration updates when valid
+- Remove only acknowledged buffered measurements
 - Connect briefly to Wi-Fi
 - Log Wi-Fi RSSI and connection time
 - Track total awake time
 - Enter deep sleep between measurement cycles
 
-The sensor initiates communication. Future Raspberry Pi communication will be request/response based, with the Pi returning acknowledgements, configuration changes, and possibly commands in the HTTP response.
+The sensor initiates communication. The current request/response flow already
+supports upload acknowledgements, optional `server_time`, and optional remote
+configuration updates in the HTTP response.
+
+## Module ownership
+
+- `main.cpp` orchestrates the wake cycle.
+- `server_api_client.cpp` owns HTTP upload and application of validated server responses.
+- `server_api_protocol.cpp` owns parsing and validation of the API v1 response.
+- `config.cpp` owns persisted device configuration.
+- `storage.cpp` owns sequence allocation and persisted buffered measurements.
+- `wifi_utils.cpp` and `time_utils.cpp` own Wi-Fi and time-specific behavior.
 
 ## Working rules
 
@@ -80,16 +95,24 @@ Important persistent state must survive:
 
 Do not reset, rename, or migrate existing NVS keys casually. If changing persistent layout, explain migration implications first.
 
+Additional storage invariants:
+- Persisted configuration keys and meanings must remain compatible unless intentionally migrated.
+- Buffered measurement storage has a format/version contract.
+- `Measurement` is persisted as binary data; layout changes require deliberate compatibility handling.
+- Buffered measurements are removed only through ACK-based semantics.
+- Storage format/version changes may intentionally clear incompatible buffered data and must not happen accidentally.
+- Sequence allocation and buffer behavior are data-loss-sensitive.
+
 ## Measurement buffering
 
-The firmware currently uses a bounded ring buffer with capacity 16.
+The firmware currently uses a bounded ring buffer with capacity 100.
 
 Requirements for future changes:
 - Preserve sequence numbers.
 - Preserve oldest-to-newest ordering.
 - Never silently exceed the configured capacity.
 - When full, the current policy is to discard the oldest measurement.
-- Future ACK handling should only remove measurements confirmed as stored by the Raspberry Pi.
+- ACK handling must only remove measurements confirmed by `acknowledged_through`.
 - Duplicate transmission must be safe; the Raspberry Pi will eventually deduplicate using device ID + sequence.
 
 ## Secrets
