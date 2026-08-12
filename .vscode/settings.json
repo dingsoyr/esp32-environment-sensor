@@ -1,6 +1,9 @@
 {
     "chat.tools.terminal.autoApprove": {
         "pio": true,
-        "\"$HOME/.platformio/penv/bin/pio\"": true
+        "\"$HOME/.platformio/penv/bin/pio\"": true,
+        "$HOME/.platformio/penv/bin/pio": true,
+        "command": true,
+        "true": true
     }
 }
