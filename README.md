@@ -9,7 +9,7 @@ On each wake cycle the firmware:
 - loads persisted device configuration
 - checks whether the current UTC time is already valid
 - connects to Wi-Fi for NTP only when time synchronization is needed
-- reads and stores a measurement before network upload
+- reads and stores a measurement, including per-measurement battery data, before network upload
 - connects to Wi-Fi, or reuses the existing connection from NTP sync
 - uploads buffered measurements to the server
 - validates the API v1 response
@@ -207,6 +207,12 @@ The project currently defines three PlatformIO environments:
 
 The `native` environment does not exercise full firmware behavior, Wi-Fi,
 storage, hardware access, or end-to-end server integration.
+
+Buffered measurements are persisted in NVS as raw `Measurement` records. That
+record now includes `battery_voltage` and `battery_percent`, and those values
+are uploaded inside each measurement object. The current firmware uses
+temporary deterministic dummy battery values pending real hardware battery
+sensing.
 
 ## Build, upload and serial monitor
 

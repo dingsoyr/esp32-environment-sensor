@@ -5,6 +5,7 @@
 #include "config.h"
 #include "firmware_version.h"
 #include "logging.h"
+#include "measurement_upload_json.h"
 #include "server_api_client.h"
 #include "server_api_protocol.h"
 #include "storage.h"
@@ -22,46 +23,17 @@ String buildMeasurementUploadRequest(
     const Measurement* measurements,
     uint32_t measurementCount
 ) {
-    String requestBody;
-    requestBody.reserve(256 + measurementCount * 160);
+    const std::string requestBody = buildMeasurementUploadRequestJson(
+        ENVIRONMENT_SENSOR_SERVER_API_VERSION,
+        deviceId.c_str(),
+        FIRMWARE_VERSION,
+        config.configVersion,
+        rssiDbm,
+        measurements,
+        measurementCount
+    );
 
-    requestBody += "{\"api_version\":";
-    requestBody += String(ENVIRONMENT_SENSOR_SERVER_API_VERSION);
-    requestBody += ",\"device_id\":\"";
-    requestBody += deviceId;
-    requestBody += "\",\"firmware_version\":\"";
-    requestBody += FIRMWARE_VERSION;
-    requestBody += "\",\"config_version\":";
-    requestBody += String(config.configVersion);
-    requestBody += ",\"status\":{\"rssi_dbm\":";
-    requestBody += String(rssiDbm);
-    requestBody += "},\"measurements\":[";
-
-    for (uint32_t index = 0; index < measurementCount; ++index) {
-        if (index > 0) {
-            requestBody += ',';
-        }
-
-        const Measurement& measurement = measurements[index];
-
-        requestBody += "{\"sequence\":";
-        requestBody += String(measurement.sequence);
-        requestBody += ",\"measured_at\":";
-        requestBody += String(measurement.unixTimestamp);
-        requestBody += ",\"timestamp_valid\":";
-        requestBody += measurement.timestampValid ? "true" : "false";
-        requestBody += ",\"temperature_c\":";
-        requestBody += String(measurement.temperatureC, 2);
-        requestBody += ",\"humidity_percent\":";
-        requestBody += String(measurement.humidityPercent, 2);
-        requestBody += ",\"pressure_hpa\":";
-        requestBody += String(measurement.pressureHpa, 2);
-        requestBody += '}';
-    }
-
-    requestBody += "]}";
-
-    return requestBody;
+    return String(requestBody.c_str());
 }
 
 void logHttpFailure(int httpStatus) {

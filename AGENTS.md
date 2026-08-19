@@ -14,7 +14,7 @@ Current hardware:
 Current firmware responsibilities:
 - Generate a stable device ID from the ESP32 eFuse MAC
 - Load persistent device configuration from ESP32 Preferences/NVS
-- Read temperature, humidity, and pressure from BME280
+- Read temperature, humidity, pressure, and temporary per-measurement battery placeholders
 - Assign a persistent sequence number to every measurement
 - Store measurements in a bounded persistent NVS ring buffer
 - Upload buffered measurements over HTTP
@@ -98,7 +98,7 @@ Do not reset, rename, or migrate existing NVS keys casually. If changing persist
 Additional storage invariants:
 - Persisted configuration keys and meanings must remain compatible unless intentionally migrated.
 - Buffered measurement storage has a format/version contract.
-- `Measurement` is persisted as binary data; layout changes require deliberate compatibility handling.
+- `Measurement` is persisted as binary data, including per-measurement battery fields; layout changes require deliberate compatibility handling.
 - Buffered measurements are removed only through ACK-based semantics.
 - Storage format/version changes may intentionally clear incompatible buffered data and must not happen accidentally.
 - Sequence allocation and buffer behavior are data-loss-sensitive.

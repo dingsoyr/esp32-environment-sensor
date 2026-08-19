@@ -5,6 +5,7 @@
 #include "measurement.h"
 
 constexpr uint32_t MEASUREMENT_BUFFER_CAPACITY = 100;
+constexpr uint32_t MEASUREMENT_BUFFER_FORMAT_VERSION = 3;
 
 uint32_t getNextSequence();
 void storeMeasurement(const Measurement& measurement);

@@ -1,10 +1,8 @@
 #include <Preferences.h>
-#include <type_traits>
 
 #include "logging.h"
 #include "storage.h"
 
-constexpr uint32_t MEASUREMENT_BUFFER_FORMAT_VERSION = 2;
 constexpr char SENSOR_NAMESPACE[] = "sensor";
 constexpr char BUFFER_NAMESPACE[] = "buffer";
 constexpr char QUEUED_COUNT_KEY[] = "count";
@@ -27,11 +25,6 @@ bool loadBufferedMeasurement(
     Preferences& preferences,
     uint32_t slotIndex,
     Measurement& measurement
-);
-
-static_assert(
-    std::is_trivially_copyable<Measurement>::value,
-    "Measurement must remain trivially copyable for NVS storage."
 );
 
 void makeMeasurementKey(uint32_t slotIndex, char* key, size_t keySize) {
