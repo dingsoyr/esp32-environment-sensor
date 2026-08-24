@@ -204,112 +204,197 @@ local environment configuration and should remain in
 
 ## PlatformIO environments
 
-The project currently defines four PlatformIO environments:
+The project currently defines five PlatformIO environments:
 
--   `debug`: ESP32 Dev Module build with debug logging enabled.
--   `release`: ESP32 Dev Module build with normal debug logging disabled.
--   `xiao_esp32c6_debug`: Seeed Studio XIAO ESP32-C6 debug build using the pinned `pioarduino` platform `55.03.311`, with deep sleep disabled so native USB serial stays available during bring-up.
+-   `debug`: ESP32 Dev Module build with `DEBUG_LOGGING=1` on the official pinned `espressif32@7.0.1` platform.
+-   `release`: ESP32 Dev Module build with `DEBUG_LOGGING=0` on the official pinned `espressif32@7.0.1` platform.
+-   `xiao_esp32c6_debug`: Seeed Studio XIAO ESP32-C6 build on pinned `pioarduino` platform `55.03.311`, with `DEBUG_LOGGING=1` and `DISABLE_DEEP_SLEEP=1`.
+-   `xiao_esp32c6_release`: Seeed Studio XIAO ESP32-C6 build on pinned `pioarduino` platform `55.03.311`, with `DEBUG_LOGGING=0` and normal deep-sleep behavior.
 -   `native`: host-side tests of the API response/protocol parser only.
 
-The `native` environment does not exercise full firmware behavior, Wi-Fi,
-storage, hardware access, or end-to-end server integration.
-
-The XIAO debug environment keeps the device awake as a development convenience.
-Normal battery-oriented operation will use deep sleep later.
-
 The firmware initializes I2C with `Wire.begin()` so each Arduino board variant
-provides its default sensor pins. That keeps the existing ESP32 Dev Module on
-SDA `GPIO21` / SCL `GPIO22`, and uses the XIAO ESP32-C6 default SDA `D4` / SCL
-`D5` mapping.
+provides its default sensor pins:
+
+-   ESP32 Dev Module: SDA `GPIO21`, SCL `GPIO22`
+-   XIAO ESP32-C6: SDA `D4`, SCL `D5`
 
 Buffered measurements are persisted in NVS as raw `Measurement` records. That
-record now includes `battery_voltage` and `battery_percent`, and those values
-are uploaded inside each measurement object. The current firmware uses
+record includes `battery_voltage` and `battery_percent`, and those values are
+uploaded inside each measurement object. The current firmware still uses
 temporary deterministic dummy battery values pending real hardware battery
 sensing.
 
-## Build, upload and serial monitor
+## ESP32 Dev Module
 
-These operations can be run using the PlatformIO controls in VS Code or
-from the WSL terminal.
+Use the existing ESP32 Dev Module environments for the original board family:
 
-The short `pio ...` commands below assume the PlatformIO CLI is already
-available on `PATH`. If it is not, use the explicit PlatformIO venv path shown
-in the alternate examples.
+-   `debug`
+-   `release`
 
-### Build
+These environments use the official pinned PlatformIO Espressif32 platform
+`espressif32@7.0.1`.
 
-``` bash
-pio run -e debug
-```
+For normal ESP32 Dev Module development, the PlatformIO buttons in VS Code can
+be used for Build, Upload, and Serial Monitor as long as the correct
+environment is selected.
 
-Alternate form:
+### VS Code workflow
+
+-   Build using the selected `debug` or `release` environment.
+-   Upload using the selected `debug` or `release` environment.
+-   Open Serial Monitor for the selected environment when a USB serial port is
+        attached to WSL.
+
+### CLI build, upload, and monitor
+
+Debug build:
 
 ``` bash
 $HOME/.platformio/penv/bin/pio run -e debug
 ```
 
-XIAO ESP32-C6 build:
-
-``` bash
-$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_debug
-```
-
-### Release build
-
-``` bash
-pio run -e release
-```
-
-Alternate form:
-
-``` bash
-$HOME/.platformio/penv/bin/pio run -e release
-```
-
-### Upload
-
-``` bash
-pio run -e debug -t upload
-```
-
-Alternate form:
+Debug upload:
 
 ``` bash
 $HOME/.platformio/penv/bin/pio run -e debug -t upload
 ```
 
-Supply upload ports locally when needed, for example with `--upload-port`,
-rather than committing board-specific device paths.
+Debug serial monitor:
+
+``` bash
+$HOME/.platformio/penv/bin/pio device monitor -e debug
+```
+
+Release build:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e release
+```
+
+Release upload:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e release -t upload
+```
+
+Release serial monitor:
+
+``` bash
+$HOME/.platformio/penv/bin/pio device monitor -e release
+```
+
+Supply upload or monitor ports locally when needed, for example with
+`--upload-port` or `--port`, rather than committing board-specific device
+paths.
+
+## XIAO ESP32-C6
+
+Use the XIAO-specific environments for the Seeed Studio XIAO ESP32-C6:
+
+-   `xiao_esp32c6_debug`
+-   `xiao_esp32c6_release`
+
+### Debug and release behavior
+
+`xiao_esp32c6_debug` is the validated bring-up and USB/serial debugging
+environment:
+
+-   `DEBUG_LOGGING` enabled
+-   deep sleep intentionally disabled
+-   intended for bring-up and native USB serial debugging
+-   performs one normal firmware cycle and then remains awake
+
+`xiao_esp32c6_release` keeps the normal sensor behavior:
+
+-   `DEBUG_LOGGING` disabled
+-   deep sleep enabled
+-   intended for normal sensor operation and later battery testing
+
+### Dedicated PlatformIO package cache
+
+The XIAO environments use the pinned `pioarduino` Espressif32 platform, while
+the ESP32 Dev Module environments use the official PlatformIO Espressif32
+platform. In the current development setup, run the XIAO environments with a
+dedicated package cache:
+
+``` bash
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages"
+```
+
+This avoids collisions between the two Arduino framework package lineages in
+PlatformIO's shared package cache.
+
+### Build
+
+Debug build:
+
+``` bash
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages" \
+$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_debug
+```
+
+Release build:
+
+``` bash
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages" \
+$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_release
+```
+
+### Upload
+
+Debug upload:
+
+``` bash
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages" \
+$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_debug \
+    -t upload --upload-port /dev/ttyACM0
+```
+
+Release upload:
+
+``` bash
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages" \
+$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_release \
+    -t upload --upload-port /dev/ttyACM0
+```
+
+`/dev/ttyACM0` is an example from the current WSL setup, not a hard-coded
+project setting. The actual device path may differ.
 
 ### Serial monitor
 
-``` bash
-pio device monitor
-```
-
-Alternate form:
+Debug serial monitor:
 
 ``` bash
-$HOME/.platformio/penv/bin/pio device monitor
+PLATFORMIO_PACKAGES_DIR="$HOME/.platformio-xiao-packages" \
+$HOME/.platformio/penv/bin/pio device monitor \
+    -e xiao_esp32c6_debug --port /dev/ttyACM0
 ```
 
-Supply monitor ports locally when needed, for example with `--port`, rather
-than committing board-specific device paths.
+The same `/dev/ttyACM0` note applies here: use the actual device path exposed
+by the current system.
 
-### Native tests
+### Windows, WSL, and native USB note
 
-``` bash
-pio test -e native
-```
+The XIAO ESP32-C6 uses native USB. Under Windows with WSL, the device may need
+to be shared and attached with `usbipd` before upload or serial access. Reset
+and deep sleep can cause the native USB device to disconnect and re-enumerate.
+`xiao_esp32c6_debug` disables deep sleep specifically to make USB/serial
+bring-up easier. `xiao_esp32c6_release` uses normal deep sleep, so serial
+monitoring is not the best way to observe repeated wake cycles; server-side
+measurement visibility is more useful for that test.
 
-Alternate form:
+## Native tests
+
+Run the host-side protocol tests separately from hardware build and upload
+workflows:
 
 ``` bash
 $HOME/.platformio/penv/bin/pio test -e native
 ```
 
-These native tests currently cover the API response parser only.
+These native tests do not exercise hardware access, Wi-Fi, NVS persistence, or
+complete end-to-end firmware behavior.
 
 ## Notes
 

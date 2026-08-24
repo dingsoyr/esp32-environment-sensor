@@ -14,10 +14,12 @@ Current hardware:
 - BME280 may use address 0x76 or 0x77
 
 PlatformIO environments currently include the existing ESP32 Dev Module targets
-and a XIAO ESP32-C6 debug target pinned to `pioarduino` platform `55.03.311`.
-That XIAO debug target disables deep sleep so native USB serial stays available
-during bring-up. Upload and monitor ports are expected to be provided locally,
-not committed. Normal battery-oriented operation will use deep sleep later.
+and XIAO ESP32-C6 debug and release targets pinned to `pioarduino` platform
+`55.03.311`. The XIAO debug target enables `DEBUG_LOGGING`, disables deep
+sleep, and is intended for bring-up and stable native USB serial debugging. The
+XIAO release target disables `DEBUG_LOGGING`, keeps normal deep-sleep behavior,
+and is intended for normal sensor operation and later battery testing. Upload
+and monitor ports are expected to be provided locally, not committed.
 
 Current firmware responsibilities:
 - Generate a stable device ID from the ESP32 eFuse MAC
