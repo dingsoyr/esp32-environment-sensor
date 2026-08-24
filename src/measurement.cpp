@@ -14,10 +14,31 @@ namespace {
 constexpr float TEMPORARY_BATTERY_VOLTAGE_VOLTS = 4.05F;
 constexpr uint8_t TEMPORARY_BATTERY_PERCENT = 85;
 
+#if DEBUG_LOGGING
+void logI2cDevices() {
+    bool foundAny = false;
+
+    LOG_PRINTLN("Scanning I2C bus...");
+
+    for (uint8_t address = 1; address < 0x78; ++address) {
+        Wire.beginTransmission(address);
+
+        if (Wire.endTransmission() == 0) {
+            LOG_PRINTF("Found I2C device at 0x%02X\n", address);
+            foundAny = true;
+        }
+    }
+
+    if (!foundAny) {
+        LOG_PRINTLN("No I2C devices found.");
+    }
+}
+#endif
+
 }  // namespace
 
 bool initSensor() {
-    Wire.begin(21, 22);
+    Wire.begin();
 
     if (bme.begin(0x76)) {
         return true;
@@ -26,6 +47,10 @@ bool initSensor() {
     if (bme.begin(0x77)) {
         return true;
     }
+
+#if DEBUG_LOGGING
+    logI2cDevices();
+#endif
 
     return false;
 }

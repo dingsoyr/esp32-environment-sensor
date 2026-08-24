@@ -6,10 +6,18 @@ This repository contains firmware for a battery-powered ESP32 environmental sens
 
 Current hardware:
 - ESP32 Dev Module
+- Seeed Studio XIAO ESP32-C6
 - BME280 environmental sensor over I2C
-- SDA: GPIO 21
-- SCL: GPIO 22
+- I2C uses Arduino board-default `Wire.begin()` pins
+- ESP32 Dev Module: SDA GPIO 21, SCL GPIO 22
+- XIAO ESP32-C6: SDA D4, SCL D5
 - BME280 may use address 0x76 or 0x77
+
+PlatformIO environments currently include the existing ESP32 Dev Module targets
+and a XIAO ESP32-C6 debug target pinned to `pioarduino` platform `55.03.311`.
+That XIAO debug target disables deep sleep so native USB serial stays available
+during bring-up. Upload and monitor ports are expected to be provided locally,
+not committed. Normal battery-oriented operation will use deep sleep later.
 
 Current firmware responsibilities:
 - Generate a stable device ID from the ESP32 eFuse MAC

@@ -2,6 +2,11 @@
 
 Firmware for the ESP32-based environment sensor.
 
+Supported boards:
+
+- ESP32 Dev Module
+- Seeed Studio XIAO ESP32-C6
+
 ## Current firmware runtime
 
 On each wake cycle the firmware:
@@ -199,14 +204,23 @@ local environment configuration and should remain in
 
 ## PlatformIO environments
 
-The project currently defines three PlatformIO environments:
+The project currently defines four PlatformIO environments:
 
--   `debug`: ESP32 development build with debug logging enabled.
--   `release`: ESP32 build with normal debug logging disabled.
+-   `debug`: ESP32 Dev Module build with debug logging enabled.
+-   `release`: ESP32 Dev Module build with normal debug logging disabled.
+-   `xiao_esp32c6_debug`: Seeed Studio XIAO ESP32-C6 debug build using the pinned `pioarduino` platform `55.03.311`, with deep sleep disabled so native USB serial stays available during bring-up.
 -   `native`: host-side tests of the API response/protocol parser only.
 
 The `native` environment does not exercise full firmware behavior, Wi-Fi,
 storage, hardware access, or end-to-end server integration.
+
+The XIAO debug environment keeps the device awake as a development convenience.
+Normal battery-oriented operation will use deep sleep later.
+
+The firmware initializes I2C with `Wire.begin()` so each Arduino board variant
+provides its default sensor pins. That keeps the existing ESP32 Dev Module on
+SDA `GPIO21` / SCL `GPIO22`, and uses the XIAO ESP32-C6 default SDA `D4` / SCL
+`D5` mapping.
 
 Buffered measurements are persisted in NVS as raw `Measurement` records. That
 record now includes `battery_voltage` and `battery_percent`, and those values
@@ -235,6 +249,12 @@ Alternate form:
 $HOME/.platformio/penv/bin/pio run -e debug
 ```
 
+XIAO ESP32-C6 build:
+
+``` bash
+$HOME/.platformio/penv/bin/pio run -e xiao_esp32c6_debug
+```
+
 ### Release build
 
 ``` bash
@@ -259,6 +279,9 @@ Alternate form:
 $HOME/.platformio/penv/bin/pio run -e debug -t upload
 ```
 
+Supply upload ports locally when needed, for example with `--upload-port`,
+rather than committing board-specific device paths.
+
 ### Serial monitor
 
 ``` bash
@@ -270,6 +293,9 @@ Alternate form:
 ``` bash
 $HOME/.platformio/penv/bin/pio device monitor
 ```
+
+Supply monitor ports locally when needed, for example with `--port`, rather
+than committing board-specific device paths.
 
 ### Native tests
 
