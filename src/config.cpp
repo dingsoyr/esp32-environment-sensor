@@ -21,7 +21,7 @@ DeviceConfig readConfigFromPreferences(Preferences& preferences) {
     config.measurementIntervalSeconds =
         preferences.isKey("interval")
             ? preferences.getUInt("interval")
-            : 3600;
+            : DEFAULT_MEASUREMENT_INTERVAL_SECONDS;
 
     return config;
 }
